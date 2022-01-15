@@ -75,17 +75,18 @@ class Puzzle
 {
     private AlgorithmInterface $algorithm;
 
-    private array $sourceData;
-    private array $exampleData;
+    private array $startData;
+    private array $goalData;
+    public array $relations;
 
-    public function setSourceData(array $sourceData)
+    public function setStartData(array $sourceData)
     {
-        $this->sourceData = $sourceData;
+        $this->startData = $sourceData;
     }
 
-    public function setExampleData(array $exampleData)
+    public function setGoalData(array $exampleData)
     {
-        $this->exampleData = $exampleData;
+        $this->goalData = $exampleData;
     }
 
     /**
@@ -96,7 +97,7 @@ class Puzzle
         $this->algorithm = $algorithm;
     }
 
-    public function getBestCase(array $processCases, array $scores): array
+    private function getBestCase(array $processCases, array $scores): array
     {
         $bestCase = $processCases[0];
         $minScore = $scores[$this->toStr($bestCase)];
@@ -110,7 +111,7 @@ class Puzzle
         return $bestCase;
     }
 
-    public function getMoved(array $case): array
+    private function getMoved(array $case): array
     {
         $results = [];
         $index = array_search(0, $case, true);
@@ -154,28 +155,37 @@ class Puzzle
         return $results;
     }
 
-    public function toStr(array $array): string
+    private function toStr(array $array): string
     {
         return implode(',', $array);
+    }
+
+    private function restorePath(): array
+    {
+        $result = [$this->goalData];
+        $key = $this->toStr($this->goalData);
+        do{
+            $value = $this->relations[$key];
+            $key = $this->toStr($value);
+            $result[] = $value;
+        }while($value!=$this->startData);
+
+        return array_reverse($result);
     }
 
     public function execute(): array
     {
         $archiveCase = [];
-        $processCases = [$this->sourceData];
+        $processCases = [$this->startData];
 
-        $costs = [$this->toStr($this->sourceData) => 0];
-        $scores = [$this->toStr($this->sourceData) => $this->algorithm->handle($this->sourceData, $this->exampleData)];
+        $costs = [$this->toStr($this->startData) => 0];
+        $scores = [$this->toStr($this->startData) => $this->algorithm->handle($this->startData, $this->goalData)];
 
-        $result = [];
-
-        while ($processCases) {
-
+        while (count($processCases) > 0) {
             $case = $this->getBestCase($processCases, $scores);
 
-            if ($case == $this->exampleData) {
-                $result[] = $case;
-                return $result;
+            if ($case == $this->goalData) {
+                return $this->restorePath();
             }
 
             $find = array_search($case, $processCases);
@@ -185,7 +195,6 @@ class Puzzle
             $archiveCase[] = $case;
 
             foreach ($this->getMoved($case) as $moved) {
-
                 if (!$moved || in_array($moved, $archiveCase)) {
                     continue;
                 }
@@ -194,66 +203,67 @@ class Puzzle
 
                 if (!in_array($moved, $processCases)) {
                     $processCases[] = $moved;
-                } else if ($cost >= $costs[$this->toStr($moved)]) {
-                    continue;
+                } else {
+                    if ($cost >= $costs[$this->toStr($moved)]) {
+                        continue;
+                    }
                 }
 
-                $result[$this->toStr($case)] = $case;
                 $costs[$this->toStr($moved)] = $cost;
-                $scores[$this->toStr($moved)] = $costs[$this->toStr($moved)] + $this->algorithm->handle($moved, $this->exampleData);
+                $scores[$this->toStr($moved)] = $costs[$this->toStr($moved)]
+                    + $this->algorithm->handle(
+                        $moved,
+                        $this->goalData
+                    );
+
+                //result
+                $this->relations[$this->toStr($moved)] = $case;
             }
         }
     }
 }
+$startTime = microtime(true);
 
-class View
-{
-    public static function render(array $data, bool $isHtml): void
-    {
-        $n = $isHtml ? '<br>' : "\n";
-        foreach (array_chunk($data, 3) as $value) {
-            echo implode('|', $value) . $n;
-        }
-        echo $n;
-    }
-}
-
-
-//$algorithm = new HammingDistance();
-$algorithm = new ManhattanDistance();
-
-$puzzle = new Puzzle();
-$puzzle->setSourceData([
-//    0,2,3,
-//    1,5,6,
-//    4,7,8
-1, 2, 3,
-4, 5, 6,
-7, 8, 0
-]);
-$puzzle->setExampleData([
+// Config
+$start = [
+    6, 2, 8,
+    4, 0, 5,
+    1, 7, 3
+];
+$goal = [
     1, 2, 3,
-    4, 0, 6,
-    7, 8, 5
-]);
+    4, 5, 6,
+    7, 8, 0
+];
+//$algorithm = new ManhattanDistance();
+$algorithm = new HammingDistance();
+$showLimit = 10;
+$br = "<br>";
+//$br = "\n"; //for console
+
+// Execute
+$puzzle = new Puzzle();
+$puzzle->setStartData($start);
+$puzzle->setGoalData($goal);
 $puzzle->setAlgorithm($algorithm);
 $result = $puzzle->execute();
 
-print_r(count($result));
-exit();
+// Report
+echo 'Algorithm: '.get_class($algorithm).$br;
+echo 'Total case: '.count($puzzle->relations).$br;
+echo 'Total step: '.count($result).$br;
+echo 'Running time: '. (microtime(true) - $startTime) .$br;
+echo $br;
 
-echo 'Algorithm: ' . get_class($algorithm) . "<br>\n";
-echo 'TotalCase: ' . count($result) . "<br>\n";
-echo "<br>\n";
+// Render result
+foreach ($result as $key=>$value) {
+    if ($value == 'separator') {
+        echo '...'.$br.$br;
+        continue;
+    }
 
-if (count($result) > 100) {
-    $result = array_merge(
-        array_slice($result, 0, 49),
-        array_slice($result, 50)
-    );
+    foreach (array_chunk($value, 3) as $item) {
+        echo implode('|', $item).$br;
+    }
+    echo $br;
 }
-
-foreach ($result as $key => $value) {
-    View::render($value, false);
-}
-

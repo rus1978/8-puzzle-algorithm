@@ -1,30 +1,20 @@
 <?php
 
+/**
+ * 8 puzzle algorithm
+ *
+ * Программа информативного поиска с помощью алгоритма A*(звездочка) для решения задачи 8 puzzle (пятнашки)
+ * В качестве эвристической функции используется Манхэттенское Расстояние или Расстояние Хэмминга. При проектировании
+ * использовался паттерн Стратегия
+ *
+ * @see https://github.com/rus1978/8-puzzle-algorithm
+ * @author Ruslan Bondar
+ * @version 1.0
+ */
+
 interface AlgorithmInterface
 {
     public function handle(array $sourceData, array $exampleData): int;
-}
-
-/**
- * Concrete heuristic function
- */
-class HammingDistance implements AlgorithmInterface
-{
-    public function handle(array $sourceData, array $exampleData): int
-    {
-        $dist = 0;
-        $cnt = count($sourceData);
-
-        for ($i = 0; $i < $cnt; $i++) {
-            $src = $sourceData[$i];
-            $exp = $exampleData[$i];
-            if ($src > 0 && $src !== $exp) {
-                $dist++;
-            }
-        }
-
-        return $dist;
-    }
 }
 
 /**
@@ -68,6 +58,39 @@ class ManhattanDistance implements AlgorithmInterface
         }
 
         return $result;
+    }
+}
+
+/**
+ * Concrete heuristic function
+ */
+class HammingDistance implements AlgorithmInterface
+{
+    public function handle(array $sourceData, array $exampleData): int
+    {
+        $dist = 0;
+        $cnt = count($sourceData);
+
+        for ($i = 0; $i < $cnt; $i++) {
+            $src = $sourceData[$i];
+            $exp = $exampleData[$i];
+            if ($src > 0 && $src !== $exp) {
+                $dist++;
+            }
+        }
+
+        return $dist;
+    }
+}
+
+/**
+ * Depth-first search, DFS
+ */
+class NoAlgorithm implements AlgorithmInterface
+{
+    public function handle(array $sourceData, array $exampleData): int
+    {
+        return 1;
     }
 }
 
@@ -210,7 +233,7 @@ class Puzzle
                 }
 
                 $costs[$this->toStr($moved)] = $cost;
-                $scores[$this->toStr($moved)] = $costs[$this->toStr($moved)]
+                $scores[$this->toStr($moved)] = $cost
                     + $this->algorithm->handle(
                         $moved,
                         $this->goalData
@@ -235,11 +258,11 @@ $goal = [
     4, 5, 6,
     7, 8, 0
 ];
-//$algorithm = new ManhattanDistance();
+$algorithm = new ManhattanDistance();
 $algorithm = new HammingDistance();
-$showLimit = 10;
-$br = "<br>";
-//$br = "\n"; //for console
+//$algorithm = new NoAlgorithm();
+//$br = "<br>";
+$br = "\n"; //for console
 
 // Execute
 $puzzle = new Puzzle();

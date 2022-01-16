@@ -259,10 +259,10 @@ $goal = [
     7, 8, 0
 ];
 $algorithm = new ManhattanDistance();
-$algorithm = new HammingDistance();
+//$algorithm = new HammingDistance();
 //$algorithm = new NoAlgorithm();
-//$br = "<br>";
-$br = "\n"; //for console
+$br = "<br>";
+//$br = "\n"; //for console
 
 // Execute
 $puzzle = new Puzzle();
